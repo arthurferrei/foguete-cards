@@ -12,6 +12,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const provider = new GoogleAuthProvider();
 
+// UI
 const container = {
   display: "flex",
   flexDirection: "column",
@@ -71,7 +72,7 @@ const subjects = {
   Penal: createCards([
     { pergunta: "O que é crime?", resposta: "Fato típico, ilícito e culpável." },
     { pergunta: "O que é dolo?", resposta: "Vontade consciente de praticar o crime." },
-    { pergunta: "O que é culpa?", resposta: "Conduta sem intenção, com negligência, imprudência ou imperícia." },
+    { pergunta: "O que é culpa?", resposta: "Negligência, imprudência ou imperícia." },
   ], 200),
 };
 
@@ -83,6 +84,7 @@ export default function App() {
   const [show, setShow] = useState(false);
   const [doneToday, setDoneToday] = useState(0);
   const [forceReview, setForceReview] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const touchStartX = useRef(0);
 
@@ -108,9 +110,7 @@ export default function App() {
       nextReview: Date.now()
     }));
 
-    await setDoc(ref, {
-      [subject]: fresh
-    }, { merge: true });
+    await setDoc(ref, { [subject]: fresh }, { merge: true });
 
     setCards([...fresh]);
     setIndex(0);
@@ -133,21 +133,20 @@ export default function App() {
     if (!user || !subject) return;
 
     const load = async () => {
+      setLoading(true);
+
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
 
       if (snap.exists() && snap.data()[subject]) {
-        const data = snap.data()[subject];
-
-        const fixed = data.map(c => ({
-          ...c,
-          nextReview: c.nextReview || Date.now()
-        }));
-
-        setCards(fixed);
+        setCards(snap.data()[subject]);
       } else {
         setCards(subjects[subject].map(c => ({ ...c, nextReview: Date.now() })));
       }
+
+      setIndex(0);
+      setShow(false);
+      setLoading(false);
     };
 
     load();
@@ -168,7 +167,8 @@ export default function App() {
     ? cards
     : cards.filter(c => c.nextReview <= Date.now());
 
-  const isFinished = availableCards.length === 0;
+  const isFinished = !loading && availableCards.length === 0;
+
   const current = availableCards[index % (availableCards.length || 1)];
 
   function updateCard(difficulty) {
@@ -244,6 +244,14 @@ export default function App() {
         ))}
 
         <button style={btn} onClick={handleLogout}>Sair</button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={container}>
+        <h2>Carregando cards...</h2>
       </div>
     );
   }
