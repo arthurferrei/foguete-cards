@@ -72,7 +72,7 @@ const subjects = {
   Penal: createCards([
     { pergunta: "O que é crime?", resposta: "Fato típico, ilícito e culpável." },
     { pergunta: "O que é dolo?", resposta: "Vontade consciente de praticar o crime." },
-    { pergunta: "O que é culpa?", resposta: "Sem intenção (negligência, imprudência ou imperícia)." },
+    { pergunta: "O que é culpa?", resposta: "Negligência, imprudência ou imperícia." },
   ], 200),
 };
 
@@ -85,30 +85,6 @@ export default function App() {
   const [doneToday, setDoneToday] = useState(0);
   const [forceReview, setForceReview] = useState(true);
 
-  // swipe
-  const touchStartX = useRef(0);
-
-  async function resetProgress() {
-    if (!user || !subject) return;
-
-    const ref = doc(db, "users", user.uid);
-
-    const fresh = subjects[subject].map(c => ({
-      ...c,
-      nextReview: Date.now(),
-      level: 0
-    }));
-
-    await setDoc(ref, { [subject]: fresh }, { merge: true });
-
-    setCards(fresh);
-    setIndex(0);
-    setDoneToday(0);
-    setShow(false);
-  }
-  const [forceReview, setForceReview] = useState(true);
-
-  // swipe
   const touchStartX = useRef(0);
 
   async function handleLogin() {
@@ -120,6 +96,25 @@ export default function App() {
     signOut(auth);
     setUser(null);
     setSubject(null);
+  }
+
+  async function resetProgress() {
+    if (!user || !subject) return;
+
+    const ref = doc(db, "users", user.uid);
+
+    const fresh = subjects[subject].map(c => ({
+      ...c,
+      level: 0,
+      nextReview: Date.now()
+    }));
+
+    await setDoc(ref, { [subject]: fresh }, { merge: true });
+
+    setCards(fresh);
+    setIndex(0);
+    setDoneToday(0);
+    setShow(false);
   }
 
   useEffect(() => {
@@ -141,8 +136,7 @@ export default function App() {
       const snap = await getDoc(ref);
 
       if (snap.exists() && snap.data()[subject]) {
-        const saved = snap.data()[subject];
-        setCards(saved);
+        setCards(snap.data()[subject]);
       } else {
         setCards(subjects[subject].map(c => ({ ...c, nextReview: Date.now() })));
       }
@@ -164,44 +158,44 @@ export default function App() {
 
   const availableCards = forceReview
     ? cards
-    : cards.filter((c) => c.nextReview <= Date.now());
+    : cards.filter(c => c.nextReview <= Date.now());
 
   const isFinished = availableCards.length === 0;
   const current = availableCards[index % (availableCards.length || 1)];
 
   function updateCard(difficulty) {
-    const updated = cards.map((c) => {
+    const updated = cards.map(c => {
       if (c.id !== current.id) return c;
 
-      let newLevel = c.level;
       let delay = 0;
+      let level = c.level;
 
       if (difficulty === "hard") {
-        newLevel = 0;
+        level = 0;
         delay = 5 * 60 * 1000;
       }
 
       if (difficulty === "medium") {
-        newLevel = c.level + 1;
+        level = c.level + 1;
         delay = (c.level + 1) * 24 * 60 * 60 * 1000;
       }
 
       if (difficulty === "easy") {
-        newLevel = c.level + 2;
+        level = c.level + 2;
         delay = (c.level + 2) * 2 * 24 * 60 * 60 * 1000;
       }
 
       return {
         ...c,
-        level: newLevel,
-        nextReview: Date.now() + delay,
+        level,
+        nextReview: Date.now() + delay
       };
     });
 
     setCards(updated);
     setShow(false);
-    setIndex((prev) => prev + 1);
-    setDoneToday((prev) => prev + 1);
+    setIndex(prev => prev + 1);
+    setDoneToday(prev => prev + 1);
   }
 
   function handleTouchStart(e) {
@@ -235,7 +229,7 @@ export default function App() {
       <div style={container}>
         <h2>Escolha a matéria</h2>
 
-        {Object.keys(subjects).map((subj) => (
+        {Object.keys(subjects).map(subj => (
           <div key={subj} style={card} onClick={() => setSubject(subj)}>
             {subj}
           </div>
@@ -249,11 +243,7 @@ export default function App() {
   return (
     <div style={container}>
       <button style={btn} onClick={() => setSubject(null)}>← Voltar</button>
-
-      <button style={btn} onClick={resetProgress}>
-        Resetar Progresso
-      </button>
-
+      <button style={btn} onClick={resetProgress}>Resetar Progresso</button>
       <button style={btn} onClick={() => setForceReview(!forceReview)}>
         {forceReview ? "Modo Inteligente" : "Revisar Tudo"}
       </button>
@@ -276,7 +266,6 @@ export default function App() {
             onTouchEnd={handleTouchEnd}
           >
             <h2>{current?.pergunta}</h2>
-
             {show && <p style={{ marginTop: "15px" }}>{current?.resposta}</p>}
           </div>
 
