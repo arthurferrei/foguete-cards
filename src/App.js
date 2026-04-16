@@ -1,5 +1,6 @@
+
 import { auth, db } from "./firebase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import {
   signInWithPopup,
@@ -34,6 +35,7 @@ const card = {
   textAlign: "center",
   boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
   cursor: "pointer",
+  userSelect: "none",
 };
 
 const btn = {
@@ -71,7 +73,7 @@ const subjects = {
   Penal: createCards([
     { pergunta: "O que é crime?", resposta: "Fato típico, ilícito e culpável." },
     { pergunta: "O que é dolo?", resposta: "Vontade consciente de praticar o crime." },
-    { pergunta: "O que é culpa?", resposta: "Conduta sem intenção, mas com negligência, imprudência ou imperícia." },
+    { pergunta: "O que é culpa?", resposta: "Sem intenção (negligência, imprudência ou imperícia)." },
   ], 200),
 };
 
@@ -82,6 +84,10 @@ export default function App() {
   const [index, setIndex] = useState(0);
   const [show, setShow] = useState(false);
   const [doneToday, setDoneToday] = useState(0);
+  const [forceReview, setForceReview] = useState(true);
+
+  // swipe
+  const touchStartX = useRef(0);
 
   async function handleLogin() {
     const result = await signInWithPopup(auth, provider);
@@ -101,7 +107,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // RESET INDEX AO TROCAR MATÉRIA
   useEffect(() => {
     setIndex(0);
   }, [subject]);
@@ -115,19 +120,9 @@ export default function App() {
 
       if (snap.exists() && snap.data()[subject]) {
         const saved = snap.data()[subject];
-
-        const fixed = saved.map((c) => ({
-          ...c,
-          nextReview: Math.min(c.nextReview, Date.now()),
-        }));
-
-        setCards(fixed);
+        setCards(saved);
       } else {
-        // GARANTE QUE TODOS OS CARDS APARECEM NA PRIMEIRA VEZ
-        setCards(subjects[subject].map(c => ({
-          ...c,
-          nextReview: Date.now()
-        })));
+        setCards(subjects[subject].map(c => ({ ...c, nextReview: Date.now() })));
       }
     };
 
@@ -145,13 +140,12 @@ export default function App() {
     save();
   }, [cards, user, subject]);
 
-  const availableCards = cards.filter((c) => c.nextReview <= Date.now());
-  const finalCards = availableCards.length ? availableCards : cards;
+  const availableCards = forceReview
+    ? cards
+    : cards.filter((c) => c.nextReview <= Date.now());
 
-  // CORREÇÃO PRINCIPAL
   const isFinished = availableCards.length === 0;
-
-  const current = finalCards[index % (finalCards.length || 1)];
+  const current = availableCards[index % (availableCards.length || 1)];
 
   function updateCard(difficulty) {
     const updated = cards.map((c) => {
@@ -188,14 +182,28 @@ export default function App() {
     setDoneToday((prev) => prev + 1);
   }
 
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e) {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+
+    if (!show) {
+      setShow(true);
+      return;
+    }
+
+    if (delta > 50) updateCard("easy");
+    if (delta < -50) updateCard("hard");
+  }
+
   if (!user) {
     return (
       <div style={container}>
         <h1>🚀 Foguete Cards</h1>
         <p>Revise rápido. Lembre na prova.</p>
-        <button style={btn} onClick={handleLogin}>
-          Entrar com Google
-        </button>
+        <button style={btn} onClick={handleLogin}>Entrar com Google</button>
       </div>
     );
   }
@@ -218,27 +226,32 @@ export default function App() {
 
   return (
     <div style={container}>
-      <button style={btn} onClick={() => setSubject(null)}>
-        ← Voltar
+      <button style={btn} onClick={() => setSubject(null)}>← Voltar</button>
+
+      <button style={btn} onClick={() => setForceReview(!forceReview)}>
+        {forceReview ? "Modo Inteligente" : "Revisar Tudo"}
       </button>
 
       <p>
-        {Math.min(index + 1, finalCards.length)} / {finalCards.length} • 🔥 {doneToday} revisões hoje
+        {Math.min(index + 1, availableCards.length)} / {availableCards.length} • 🔥 {doneToday}
       </p>
 
       {isFinished ? (
         <div style={card}>
           <h2>🔥 Por hoje acabou</h2>
-          <p>Volte amanhã para continuar evoluindo 🚀</p>
+          <p>Volte amanhã 🚀</p>
         </div>
       ) : (
         <>
-          <div style={card} onClick={() => !show && setShow(true)}>
+          <div
+            style={card}
+            onClick={() => !show && setShow(true)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
             <h2>{current?.pergunta}</h2>
 
-            {show && (
-              <p style={{ marginTop: "15px" }}>{current?.resposta}</p>
-            )}
+            {show && <p style={{ marginTop: "15px" }}>{current?.resposta}</p>}
           </div>
 
           {show && (
