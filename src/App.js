@@ -12,7 +12,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const provider = new GoogleAuthProvider();
 
-// UI STYLES (mais profissional)
+// UI STYLES
 const container = {
   display: "flex",
   flexDirection: "column",
@@ -22,14 +22,15 @@ const container = {
   background: "#0f172a",
   color: "#fff",
   fontFamily: "Arial, sans-serif",
+  padding: "20px",
 };
 
 const card = {
   background: "#1e293b",
   padding: "30px",
   borderRadius: "20px",
-  maxWidth: "400px",
-  width: "90%",
+  maxWidth: "420px",
+  width: "100%",
   textAlign: "center",
   boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
   cursor: "pointer",
@@ -42,7 +43,7 @@ const btn = {
   padding: "12px 16px",
   borderRadius: "10px",
   cursor: "pointer",
-  margin: "5px",
+  margin: "6px",
   fontWeight: "bold",
 };
 
@@ -125,6 +126,9 @@ export default function App() {
 
   const availableCards = cards.filter((c) => c.nextReview <= Date.now());
   const finalCards = availableCards.length ? availableCards : cards;
+
+  const isFinished = finalCards.length === 0 || index >= finalCards.length;
+
   const current = finalCards[index % (finalCards.length || 1)];
 
   function updateCard(difficulty) {
@@ -166,6 +170,7 @@ export default function App() {
     return (
       <div style={container}>
         <h1>🚀 Foguete Cards</h1>
+        <p>Revise rápido. Lembre na prova.</p>
         <button style={btn} onClick={handleLogin}>
           Entrar com Google
         </button>
@@ -196,21 +201,32 @@ export default function App() {
       </button>
 
       <p>
-        {index + 1} / {finalCards.length} • Hoje: {doneToday}
+        {Math.min(index + 1, finalCards.length)} / {finalCards.length} • 🔥 {doneToday} revisões hoje
       </p>
 
-      <div style={card} onClick={() => !show && setShow(true)}>
-        <h2>{current?.pergunta}</h2>
-
-        {show && <p style={{ marginTop: "15px" }}>{current?.resposta}</p>}
-      </div>
-
-      {show && (
-        <div>
-          <button style={btn} onClick={() => updateCard("hard")}>Não sei</button>
-          <button style={btn} onClick={() => updateCard("medium")}>Médio</button>
-          <button style={btn} onClick={() => updateCard("easy")}>Sei</button>
+      {isFinished ? (
+        <div style={card}>
+          <h2>🔥 Por hoje acabou</h2>
+          <p>Volte amanhã para continuar evoluindo 🚀</p>
         </div>
+      ) : (
+        <>
+          <div style={card} onClick={() => !show && setShow(true)}>
+            <h2>{current?.pergunta}</h2>
+
+            {show && (
+              <p style={{ marginTop: "15px" }}>{current?.resposta}</p>
+            )}
+          </div>
+
+          {show && (
+            <div>
+              <button style={btn} onClick={() => updateCard("hard")}>Não sei</button>
+              <button style={btn} onClick={() => updateCard("medium")}>Médio</button>
+              <button style={btn} onClick={() => updateCard("easy")}>Sei</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
