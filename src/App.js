@@ -61,6 +61,18 @@ const subjects = {
     { pergunta: "O que é cláusula pétrea?", resposta: "Normas imutáveis." },
     { pergunta: "O que é ADI?", resposta: "Ação Direta de Inconstitucionalidade." },
   ], 1),
+
+  Administrativo: createCards([
+    { pergunta: "O que é ato administrativo?", resposta: "Manifestação unilateral da Administração." },
+    { pergunta: "O que significa LIMPE?", resposta: "Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência." },
+    { pergunta: "O que é poder de polícia?", resposta: "Restrição de direitos em prol do interesse público." },
+  ], 100),
+
+  Penal: createCards([
+    { pergunta: "O que é crime?", resposta: "Fato típico, ilícito e culpável." },
+    { pergunta: "O que é dolo?", resposta: "Vontade consciente de praticar o crime." },
+    { pergunta: "O que é culpa?", resposta: "Conduta sem intenção, mas com negligência, imprudência ou imperícia." },
+  ], 200),
 };
 
 export default function App() {
@@ -89,6 +101,11 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // RESET INDEX AO TROCAR MATÉRIA
+  useEffect(() => {
+    setIndex(0);
+  }, [subject]);
+
   useEffect(() => {
     if (!user || !subject) return;
 
@@ -106,7 +123,11 @@ export default function App() {
 
         setCards(fixed);
       } else {
-        setCards(subjects[subject]);
+        // GARANTE QUE TODOS OS CARDS APARECEM NA PRIMEIRA VEZ
+        setCards(subjects[subject].map(c => ({
+          ...c,
+          nextReview: Date.now()
+        })));
       }
     };
 
@@ -127,7 +148,8 @@ export default function App() {
   const availableCards = cards.filter((c) => c.nextReview <= Date.now());
   const finalCards = availableCards.length ? availableCards : cards;
 
-  const isFinished = finalCards.length === 0 || index >= finalCards.length;
+  // CORREÇÃO PRINCIPAL
+  const isFinished = availableCards.length === 0;
 
   const current = finalCards[index % (finalCards.length || 1)];
 
