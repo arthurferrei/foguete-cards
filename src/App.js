@@ -1,4 +1,3 @@
-
 import { auth, db } from "./firebase";
 import { useState, useEffect, useRef } from "react";
 
@@ -84,6 +83,29 @@ export default function App() {
   const [index, setIndex] = useState(0);
   const [show, setShow] = useState(false);
   const [doneToday, setDoneToday] = useState(0);
+  const [forceReview, setForceReview] = useState(true);
+
+  // swipe
+  const touchStartX = useRef(0);
+
+  async function resetProgress() {
+    if (!user || !subject) return;
+
+    const ref = doc(db, "users", user.uid);
+
+    const fresh = subjects[subject].map(c => ({
+      ...c,
+      nextReview: Date.now(),
+      level: 0
+    }));
+
+    await setDoc(ref, { [subject]: fresh }, { merge: true });
+
+    setCards(fresh);
+    setIndex(0);
+    setDoneToday(0);
+    setShow(false);
+  }
   const [forceReview, setForceReview] = useState(true);
 
   // swipe
@@ -227,6 +249,10 @@ export default function App() {
   return (
     <div style={container}>
       <button style={btn} onClick={() => setSubject(null)}>← Voltar</button>
+
+      <button style={btn} onClick={resetProgress}>
+        Resetar Progresso
+      </button>
 
       <button style={btn} onClick={() => setForceReview(!forceReview)}>
         {forceReview ? "Modo Inteligente" : "Revisar Tudo"}
