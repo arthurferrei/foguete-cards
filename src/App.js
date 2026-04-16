@@ -12,7 +12,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const provider = new GoogleAuthProvider();
 
-// UI STYLES
 const container = {
   display: "flex",
   flexDirection: "column",
@@ -64,15 +63,15 @@ const subjects = {
   ], 1),
 
   Administrativo: createCards([
-    { pergunta: "O que é ato administrativo?", resposta: "Manifestação unilateral da Administração." },
+    { pergunta: "O que é ato administrativo?", resposta: "Manifestação da Administração Pública." },
     { pergunta: "O que significa LIMPE?", resposta: "Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência." },
-    { pergunta: "O que é poder de polícia?", resposta: "Restrição de direitos em prol do interesse público." },
+    { pergunta: "O que é poder de polícia?", resposta: "Limitação de direitos em prol do interesse público." },
   ], 100),
 
   Penal: createCards([
     { pergunta: "O que é crime?", resposta: "Fato típico, ilícito e culpável." },
     { pergunta: "O que é dolo?", resposta: "Vontade consciente de praticar o crime." },
-    { pergunta: "O que é culpa?", resposta: "Negligência, imprudência ou imperícia." },
+    { pergunta: "O que é culpa?", resposta: "Conduta sem intenção, com negligência, imprudência ou imperícia." },
   ], 200),
 };
 
@@ -109,9 +108,11 @@ export default function App() {
       nextReview: Date.now()
     }));
 
-    await setDoc(ref, { [subject]: fresh }, { merge: true });
+    await setDoc(ref, {
+      [subject]: fresh
+    }, { merge: true });
 
-    setCards(fresh);
+    setCards([...fresh]);
     setIndex(0);
     setDoneToday(0);
     setShow(false);
@@ -136,7 +137,14 @@ export default function App() {
       const snap = await getDoc(ref);
 
       if (snap.exists() && snap.data()[subject]) {
-        setCards(snap.data()[subject]);
+        const data = snap.data()[subject];
+
+        const fixed = data.map(c => ({
+          ...c,
+          nextReview: c.nextReview || Date.now()
+        }));
+
+        setCards(fixed);
       } else {
         setCards(subjects[subject].map(c => ({ ...c, nextReview: Date.now() })));
       }
@@ -167,8 +175,8 @@ export default function App() {
     const updated = cards.map(c => {
       if (c.id !== current.id) return c;
 
-      let delay = 0;
       let level = c.level;
+      let delay = 0;
 
       if (difficulty === "hard") {
         level = 0;
